@@ -1,0 +1,456 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VEIL • Binary Reflected Gray Code</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    :root {
+      --gold: #d4af37;
+      --deep: #0a0a0a;
+      --void: #111111;
+      --neon: #00f5ff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--deep);
+      color: #e0e0e0;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    .hero {
+      height: 100vh;
+      background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 80%);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('https://picsum.photos/id/1015/1920/1080') center/cover;
+      opacity: 0.08;
+      mix-blend-mode: overlay;
+    }
+
+    .canvas-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      opacity: 0.6;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      max-width: 920px;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 5.5rem;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      background: linear-gradient(90deg, #d4af37, #ffffff, #00f5ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 80px rgba(212, 175, 55, 0.5);
+    }
+
+    .tagline {
+      font-size: 1.35rem;
+      color: #aaa;
+      margin-bottom: 3rem;
+      font-weight: 400;
+    }
+
+    .converter {
+      background: rgba(17, 17, 17, 0.95);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 24px;
+      padding: 2.5rem;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .bit-container {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin: 2rem 0;
+      flex-wrap: wrap;
+    }
+
+    .bit {
+      width: 68px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: #1a1a1a;
+      border: 3px solid var(--gold);
+      border-radius: 16px;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+    }
+
+    .bit.active {
+      background: var(--gold);
+      color: #000;
+      transform: scale(1.12) rotate(4deg);
+      box-shadow: 0 0 40px rgba(212, 175, 55, 0.8);
+    }
+
+    input[type="number"] {
+      background: #111;
+      border: 2px solid #333;
+      color: white;
+      padding: 18px 24px;
+      font-size: 1.8rem;
+      width: 100%;
+      border-radius: 16px;
+      text-align: center;
+      margin: 1.5rem 0;
+    }
+
+    .tabs {
+      display: flex;
+      background: #111;
+      border-radius: 9999px;
+      padding: 6px;
+      width: fit-content;
+      margin: 2rem auto;
+    }
+
+    .tab {
+      padding: 12px 32px;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .tab.active {
+      background: var(--gold);
+      color: black;
+      font-weight: 700;
+    }
+
+    .output {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+      text-align: left;
+    }
+
+    .result {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1.5rem;
+      border-radius: 16px;
+      border-left: 5px solid var(--neon);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 4rem 0;
+      background: rgba(17, 17, 17, 0.6);
+    }
+
+    th,
+    td {
+      padding: 14px 20px;
+      text-align: center;
+      border-bottom: 1px solid #222;
+    }
+
+    th {
+      background: rgba(212, 175, 55, 0.1);
+      color: var(--gold);
+    }
+
+    .footer {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .particle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <section class="hero">
+    <canvas id="canvas" class="canvas-bg"></canvas>
+
+    <div class="content">
+      <h1>VEIL</h1>
+      <p class="tagline">Binary Reflected Gray Code • The language of elegant transitions</p>
+
+      <div class="converter">
+        <div class="tabs">
+          <div class="tab active" data-mode="encode">ENCODE</div>
+          <div class="tab" data-mode="decode">DECODE</div>
+        </div>
+
+        <input type="number" id="input" value="177" placeholder="Enter decimal...">
+
+        <div class="bit-container" id="bits"></div>
+
+        <div class="output">
+          <div class="result">
+            <small style="color:#888;">BINARY</small>
+            <div id="binary" style="font-size:1.6rem; font-family:monospace; margin-top:8px;">10110001</div>
+          </div>
+          <div class="result">
+            <small style="color:#888;">GRAY CODE</small>
+            <div id="gray" style="font-size:1.6rem; font-family:monospace; margin-top:8px; color:#d4af37;">11101001</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 3rem; font-size: 1.1rem; opacity: 0.8;">
+        <i class="fas fa-arrow-down"></i> Scroll for the full spectrum
+      </div>
+    </div>
+  </section>
+
+  <section style="padding: 6rem 5%; background: #0a0a0a;">
+    <h2 style="text-align:center; font-size:3rem; margin-bottom:3rem; background: linear-gradient(90deg, #d4af37, #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+      The Complete 5-Bit Codex
+    </h2>
+
+    <table id="codex">
+      <thead>
+        <tr>
+          <th>Decimal</th>
+          <th>Binary</th>
+          <th>Gray Code</th>
+          <th>Decoded</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section style="padding: 6rem 5%; background: linear-gradient(#111, #0a0a0a);">
+    <div style="max-width: 1100px; margin: 0 auto;">
+      <h2 style="text-align:center; font-size:2.8rem; margin-bottom:4rem;">Implementations</h2>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 2rem;">
+        <!-- Python -->
+        <div style="background:#111; border-radius:20px; padding:2rem; border:1px solid #222;">
+          <h3 style="color:#d4af37; margin-bottom:1rem;"><i class="fab fa-python"></i> Python</h3>
+          <pre style="background:#0a0a0a; padding:1.5rem; border-radius:12px; font-size:0.95rem; overflow-x:auto;"><code>def gray(encode, n):
+    if encode:
+        return n ^ (n >> 1)
+    b = n
+    while n:
+        n >>= 1
+        b ^= n
+    return b</code></pre>
+        </div>
+
+        <!-- JavaScript -->
+        <div style="background:#111; border-radius:20px; padding:2rem; border:1px solid #222;">
+          <h3 style="color:#d4af37; margin-bottom:1rem;"><i class="fab fa-js"></i> JavaScript</h3>
+          <pre style="background:#0a0a0a; padding:1.5rem; border-radius:12px; font-size:0.95rem; overflow-x:auto;"><code>function gray(encode, n) {
+    if (encode) return n ^ (n >>> 1);
+    let b = n;
+    while (n) {
+        n >>>= 1;
+        b ^= n;
+    }
+    return b;
+}</code></pre>
+        </div>
+
+        <!-- Java -->
+        <div style="background:#111; border-radius:20px; padding:2rem; border:1px solid #222;">
+          <h3 style="color:#d4af37; margin-bottom:1rem;"><i class="fab fa-java"></i> Java</h3>
+          <pre style="background:#0a0a0a; padding:1.5rem; border-radius:12px; font-size:0.95rem; overflow-x:auto;"><code>public static int gray(boolean encode, int n) {
+    if (encode) return n ^ (n >>> 1);
+    int b = n;
+    while (n != 0) {
+        n >>>= 1;
+        b ^= n;
+    }
+    return b;
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <p>© 2026 VEIL • Digital Artifact • Binary Reflected Gray Code Explorer</p>
+    <p style="margin-top:1rem; font-size:0.9rem;">Crafted with precision for those who appreciate elegant transitions</p>
+  </div>
+
+  <script>
+    // Core Gray Code Functions
+    function toGray(n) {
+      return n ^ (n >>> 1);
+    }
+
+    function fromGray(n) {
+      let b = n;
+      while (n) {
+        n >>>= 1;
+        b ^= n;
+      }
+      return b;
+    }
+    // Bit visualization
+    function createBits(value, container) {
+      container.innerHTML = '';
+      const bin = value.toString(2).padStart(8, '0');
+      for (let bit of bin) {
+        const div = document.createElement('div');
+        div.className = 'bit';
+        div.textContent = bit;
+        container.appendChild(div);
+      }
+    }
+    // Main converter logic
+    function updateConverter() {
+      const input = parseInt(document.getElementById('input').value) || 0;
+      const isEncode = document.querySelector('.tab.active').dataset.mode === 'encode';
+      let binaryVal, grayVal;
+      if (isEncode) {
+        binaryVal = input;
+        grayVal = toGray(input);
+      } else {
+        grayVal = input;
+        binaryVal = fromGray(input);
+      }
+      document.getElementById('binary').textContent = binaryVal.toString(2).padStart(8, '0');
+      document.getElementById('gray').textContent = grayVal.toString(2).padStart(8, '0');
+      createBits(isEncode ? binaryVal : grayVal, document.getElementById('bits'));
+    }
+    // Populate codex table
+    function populateCodex() {
+      const tbody = document.querySelector('#codex tbody');
+      tbody.innerHTML = '';
+      for (let i = 0; i < 32; i++) {
+        const gray = toGray(i);
+        const decoded = fromGray(gray);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+                    <td><strong>${i}</strong></td>
+                    <td style="font-family:monospace;">${i.toString(2).padStart(5,'0')}</td>
+                    <td style="font-family:monospace; color:#d4af37;">${gray.toString(2).padStart(5,'0')}</td>
+                    <td>${decoded}</td>
+                `;
+        tbody.appendChild(row);
+      }
+    }
+    // Canvas background
+    function initCanvas() {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+      let particles = [];
+      class Particle {
+        constructor() {
+          this.reset();
+        }
+        reset() {
+          this.x = Math.random() * canvas.width;
+          this.y = Math.random() * canvas.height;
+          this.size = Math.random() * 2.5 + 0.8;
+          this.speed = Math.random() * 0.6 + 0.2;
+        }
+        update() {
+          this.y += this.speed;
+          if (this.y > canvas.height) this.reset();
+        }
+        draw() {
+          ctx.fillStyle = 'rgba(212, 175, 55, 0.7)';
+          ctx.fillRect(this.x, this.y, this.size, this.size * 8);
+        }
+      }
+      for (let i = 0; i < 120; i++) {
+        particles.push(new Particle());
+      }
+
+      function animate() {
+        ctx.fillStyle = 'rgba(10,10,10,0.12)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (let p of particles) {
+          p.update();
+          p.draw();
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+    }
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      initCanvas();
+      populateCodex();
+      const inputField = document.getElementById('input');
+      const tabs = document.querySelectorAll('.tab');
+      inputField.addEventListener('input', updateConverter);
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          updateConverter();
+        });
+      });
+      // Initial render
+      updateConverter();
+      // GSAP entrance
+      gsap.from(".converter", {
+        y: 80,
+        opacity: 0,
+        duration: 1.4,
+        ease: "power4.out"
+      });
+    });
+    // Keyboard support
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.getElementById('input') !== document.activeElement) {
+        e.preventDefault();
+        document.getElementById('input').focus();
+      }
+    });
+  </script>
+</body>
+
+</html>
